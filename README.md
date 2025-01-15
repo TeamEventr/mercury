@@ -7,6 +7,7 @@ available in your system.
 ```bash
 git clone https://github.com/TeamEventr/mercury
 cd mercury
+docker-compose up -d  # Brings up Postgres, Redis and ElastiSearch
 make run
 ```
 For running the server in development mode with hot-reload, use 'air'. The 
