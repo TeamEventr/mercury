@@ -1,5 +1,6 @@
 # Ignore binaries
 bin/
+tmp/
 
 # Ignore environment variables
 .env
