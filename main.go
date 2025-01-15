@@ -1,17 +1,18 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
+	"github.com/IAmRiteshKoushik/mercury/helpers"
 	"github.com/IAmRiteshKoushik/mercury/routes"
 	"github.com/gin-gonic/gin"
 )
 
-func main() {
+func InitServer() {
 	router := gin.New()
 	router.Use(gin.Logger())
-	// router.Use(middleware.Authentication())
 
 	// Test route
 	router.GET("/api/v1/test", func(c *gin.Context) {
@@ -34,4 +35,12 @@ func main() {
 	if err != nil {
 		log.Fatal("[ERROR]: Could not start server")
 	}
+}
+
+func main() {
+	helpers.GenerateRSAKeyPair(128)
+	access, refresh, err := helpers.GenerateTokens("riteshkoushik", "riteshkoushik39@gmail.com")
+	fmt.Println(access)
+	fmt.Println(refresh)
+	fmt.Println(err)
 }
