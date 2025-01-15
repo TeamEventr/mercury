@@ -11,7 +11,7 @@ services:
     image: postgres:latest
     container_name: eventr-postgres
     environment:
-      POSTGRES_MULTIPLE_DATABASE: eventr-base, eventr-transactions
+      POSTGRES_DATABASE: eventr-base
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 1234
     ports:
