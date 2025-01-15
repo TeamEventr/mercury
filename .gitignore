@@ -4,3 +4,6 @@ tmp/
 
 # Ignore environment variables
 .env
+
+# Ignore PEM files
+*.pem
