@@ -1,4 +1,4 @@
-package config
+package cmd
 
 import (
 	"fmt"
@@ -10,8 +10,7 @@ import (
 type EnvConfig struct {
 	Environment string `default:"development" required:"true"`
 	Port        int    `default:"9000" required:"true"`
-	// Host        string `default:"localhost" required:"true"`
-	Db string `default:"postgresql://postgres:1234@localhost:5432/" required:"true"`
+	Db          string `default:"postgresql://postgres:1234@localhost:5432/" required:"true"`
 }
 
 func (e *EnvConfig) NewEnv() (*EnvConfig, error) {
