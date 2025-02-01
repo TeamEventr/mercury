@@ -76,3 +76,39 @@ func VerifyToken(token string) (*Payload, error) {
 	}
 	return payload, nil
 }
+
+func CreateNewTokens(uuid, role string) (auth, refresh, csrfSecret string) {
+	return "", "", ""
+}
+
+func CheckAndRefreshTokens(oldAuth, oldRefresh, oldCsrf string) (newAuth, newRefresh, newCsrf string, err error) {
+	return "", "", "", nil
+}
+
+func CreateAuthTokenString(uuid, role, csrfSecret string) (auth string, err error) {
+	return "", nil
+}
+
+func UpdateAuthTokenString(refresh, oldAuth string) (newAuth, csrf string, err error) {
+	return "", "", nil
+}
+
+func CreateRefreshTokenString(uuid, role, csrfSecret string) (refresh string, err error) {
+	return "", nil
+}
+
+func UpdateRefreshTokenExp(oldRefresh string) (newRefresh string, err error) {
+	return "", nil
+}
+
+func RevokeRefreshToken(refresh string) error {
+	return nil
+}
+
+func UpdateRefreshTokenCsrf(oldRefresh, newCsrfSecret string) (newRefresh string, err error) {
+	return "", nil
+}
+
+func GrabUUID(auth string) (string, error) {
+	return "", nil
+}
