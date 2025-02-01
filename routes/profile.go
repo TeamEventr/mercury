@@ -2,15 +2,17 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+
+	"github.com/IAmRiteshKoushik/mercury/controllers"
 )
 
 func ProfileRoutes(engine *gin.RouterGroup) {
-	// Fetch profile
-	engine.GET("/:username")
-	engine.GET("/visit/:username")
+	// get user-profile (protected routes)
+	engine.GET("/:username", controllers.GetUserProfile)
 
-	// Edit Profile Details
-	engine.POST("/edit/:username")
-	engine.POST("/edit/profile-picture/:username")
-	engine.DELETE("/edit/profile-picture/:username")
+	// edti user-profile details (protected routes)
+	engine.POST("/edit/:username", controllers.EditUserProfile)
+	engine.POST("/add/profile-picture/:username", controllers.AddUserPfp)
+	engine.POST("/edit/profile-picture/:username", controllers.EditUserPfp)
+	engine.DELETE("/delete/profile-picture/:username", controllers.DeleteUserPfp)
 }
