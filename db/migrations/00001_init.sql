@@ -1,6 +1,7 @@
 -- +goose Up
 -- +goose StatemendBegin
-CREATE EXTENSION "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 CREATE TYPE enum_account_status as ENUM ('active', 'disabled', 'banned', 'deleted');
 CREATE TYPE enum_event_schedule as ENUM ('ontime', 'prepond', 'postponed', 'cancelled');
 CREATE TYPE enum_event_visibility as ENUM ('draft', 'published');
