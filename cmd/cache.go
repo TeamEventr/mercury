@@ -8,6 +8,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+var Cache *redis.Client
+
 type RedisConfig struct {
 	Addr            string
 	Password        string

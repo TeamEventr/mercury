@@ -9,6 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var DBPool *pgxpool.Pool
+
 func InitDB() (*pgxpool.Pool, error) {
 	connStr := os.Getenv("DATABASE_URL")
 	poolConfig, err := pgxpool.ParseConfig(connStr)

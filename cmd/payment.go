@@ -10,6 +10,8 @@ import (
 	"github.com/razorpay/razorpay-go"
 )
 
+var Pay *RzpConfig
+
 type RzpConfig struct {
 	Key    string
 	Secret string
