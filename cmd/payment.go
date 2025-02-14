@@ -5,32 +5,62 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
-	"errors"
+	"fmt"
 
 	"github.com/razorpay/razorpay-go"
 )
 
-func ExecuteRazorpay() (string, error) {
-	client := razorpay.NewClient("key", "secret")
+type RzpConfig struct {
+	Key    string
+	Secret string
+	Client *razorpay.Client
+}
 
-	data := map[string]interface{}{
-		// FIXME: Adding a dummy price tag for now
-		"amount":   int(100) * 100,
-		"currency": "INR",
-		"receipt":  "101", // replace with receipt-id
+func NewRzpConfig(key, secret string) (*RzpConfig, error) {
+	if key == "" || secret == "" {
+		return nil, fmt.Errorf("Key or Secret is unavailable.")
 	}
 
-	body, err := client.Order.Create(data, nil)
+	return &RzpConfig{
+		Key:    key,
+		Secret: secret,
+		Client: razorpay.NewClient(key, secret),
+	}, nil
+}
+
+func (rzp *RzpConfig) ObtainKey() string {
+	return rzp.Key
+}
+
+func (rzp *RzpConfig) ExecuteRazorpay(amount int, eventId, name, contact,
+	email, desc, txnId string) (string, error) {
+
+	options := map[string]interface{}{
+		"amount":          amount * 100,
+		"currency":        "INR",
+		"receipt":         txnId,
+		"payment_capture": true, // automatically capture payment
+		"notes": map[string]interface{}{
+			"event_id": eventId,
+		},
+		"customer": map[string]interface{}{
+			"name":  name,
+			"email": email,
+		},
+		"description": desc,
+	}
+
+	order, err := rzp.Client.Order.Create(options, nil)
 	if err != nil {
-		return "", errors.New("Payment not initiated")
+		return "", fmt.Errorf("Payment not initiated")
 	}
-	razorId, _ := body["id"].(string)
+	razorId, _ := order["id"].(string)
 	return razorId, nil
 }
 
 func RazorPaymentVerification(sign, orderId, paymentId string) error {
 	signature := sign
-	secret := "SECRET" // TODO: Add the actual secret
+	secret := EnvVars.RzpSecret
 	data := orderId + "|" + paymentId
 
 	h := hmac.New(sha256.New, []byte(secret))
@@ -42,7 +72,7 @@ func RazorPaymentVerification(sign, orderId, paymentId string) error {
 
 	sha := hex.EncodeToString(h.Sum(nil))
 	if subtle.ConstantTimeCompare([]byte(sha), []byte(signature)) != 1 {
-		return errors.New("Payment failed")
+		return fmt.Errorf("Payment failed")
 	}
 	return nil
 }

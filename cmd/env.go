@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+var EnvVars EnvConfig
+
 type EnvConfig struct {
 	Environment   string `default:"development" required:"true"`
 	Port          int    `default:"9000" required:"true"`
@@ -21,7 +23,7 @@ type EnvConfig struct {
 }
 
 func (e *EnvConfig) NewEnvConfig() (*EnvConfig, error) {
-	cfg := &EnvConfig{}
+	EnvVars := &EnvConfig{}
 	validEnvs := []string{"development", "testing", "production"}
 
 	environment := os.Getenv("ENVIRONMENT")
@@ -46,7 +48,7 @@ func (e *EnvConfig) NewEnvConfig() (*EnvConfig, error) {
 	if !isValid {
 		return nil, fmt.Errorf("Invalid ENVIRONMENT value: %s", environment)
 	}
-	cfg.Environment = environment
+	EnvVars.Environment = environment
 	if port == "" {
 		return nil, fmt.Errorf("PORT environment variable is missing.")
 	}
@@ -54,39 +56,39 @@ func (e *EnvConfig) NewEnvConfig() (*EnvConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Invalid PORT value: %w", err)
 	}
-	cfg.Port = portNum
+	EnvVars.Port = portNum
 	if dbUrl == "" {
 		return nil, fmt.Errorf("PORT environment variable is missing.")
 	}
-	cfg.DBUrl = dbUrl
+	EnvVars.DBUrl = dbUrl
 	if rzpKey == "" {
 		return nil, fmt.Errorf("DATABASE_URL environment variable is missing.")
 	}
-	cfg.RzpKey = rzpKey
+	EnvVars.RzpKey = rzpKey
 	if rzpSecret == "" {
 		return nil, fmt.Errorf("RAZORPAY_SECRET environment variable is missing.")
 	}
-	cfg.RzpSecret = rzpSecret
+	EnvVars.RzpSecret = rzpSecret
 	if oauthClientId == "" {
 		return nil, fmt.Errorf("RAZORPAY_CLIENT_ID environment variable is missing.")
 	}
-	cfg.OAuthClient = oauthClientId
+	EnvVars.OAuthClient = oauthClientId
 	if oauthClientSecret == "" {
 		return nil, fmt.Errorf("OAUTH_CLIENT_SECRET environment variable is missing.")
 	}
-	cfg.OAuthSecret = oauthClientSecret
+	EnvVars.OAuthSecret = oauthClientSecret
 	if oauthCallback == "" {
 		return nil, fmt.Errorf("OAUTH_CALLBACK_URL environment variable is missing.")
 	}
-	cfg.OAuthCallback = oauthCallback
+	EnvVars.OAuthCallback = oauthCallback
 	if cacheAddr == "" {
 		return nil, fmt.Errorf("REDIS_URL environment variable is missing.")
 	}
-	cfg.CacheAddr = cacheAddr
+	EnvVars.CacheAddr = cacheAddr
 	if cachePwd == "" {
 		return nil, fmt.Errorf("REDIS_PASSWORD environment variable is missing.")
 	}
-	cfg.CachePwd = cachePwd
+	EnvVars.CachePwd = cachePwd
 
-	return cfg, nil
+	return EnvVars, nil
 }
