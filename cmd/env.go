@@ -10,16 +10,20 @@ import (
 var EnvVars *EnvConfig
 
 type EnvConfig struct {
-	Environment   string `default:"development" required:"true"`
-	Port          int    `default:"9000" required:"true"`
-	DBUrl         string `default:"postgresql://postgres:1234@localhost:5432/" required:"true"`
-	RzpKey        string
-	RzpSecret     string
-	OAuthClient   string
-	OAuthSecret   string
-	OAuthCallback string
-	CacheAddr     string
-	CachePwd      string
+	Environment        string
+	Port               int
+	DBUrl              string
+	RzpKey             string
+	RzpSecret          string
+	OAuthClient        string
+	OAuthSecret        string
+	OAuthCallback      string
+	CacheAddr          string
+	CachePwd           string
+	AwsRegionName      string
+	AwsBucketName      string
+	AwsBucketAccessKey string
+	AwsBucketSecretKey string
 }
 
 func NewEnvConfig() (*EnvConfig, error) {
@@ -36,6 +40,10 @@ func NewEnvConfig() (*EnvConfig, error) {
 	oauthCallback := os.Getenv("OAUTH_CALLBACK_URL")
 	cacheAddr := os.Getenv("REDIS_URL")
 	cachePwd := os.Getenv("REDIS_PASSWORD")
+	awsRegionName := os.Getenv("AWS_REGION")
+	awsBucketName := os.Getenv("AWS_S3_BUCKET_NAME")
+	awsBucketAccessKey := os.Getenv("AWS_S3_BUCKET_ACCESS_KEY")
+	awsBucketSecretKey := os.Getenv("AWS_S3_BUCKET_SECRET_KEY")
 
 	environment = strings.ToLower(environment)
 	isValid := false
@@ -89,6 +97,22 @@ func NewEnvConfig() (*EnvConfig, error) {
 		return nil, fmt.Errorf("REDIS_PASSWORD environment variable is missing.")
 	}
 	cfg.CachePwd = cachePwd
+	if awsRegionName == "" {
+		return nil, fmt.Errorf("AWS_REGION environment variable is missing.")
+	}
+	cfg.AwsRegionName = awsRegionName
+	if awsBucketName == "" {
+		return nil, fmt.Errorf("AWS_S3_BUCKET_NAME environment variable is missing.")
+	}
+	cfg.AwsBucketName = awsBucketName
+	if awsBucketAccessKey == "" {
+		return nil, fmt.Errorf("AWS_S3_BUCKET_ACCESS_KEY environment variable is missing.")
+	}
+	cfg.AwsBucketAccessKey = awsBucketAccessKey
+	if awsBucketSecretKey == "" {
+		return nil, fmt.Errorf("AWS_S3_BUCKET_SECRET_KEY environment variable is missing.")
+	}
+	cfg.AwsBucketSecretKey = awsBucketSecretKey
 
 	return cfg, nil
 }
