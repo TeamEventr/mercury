@@ -7,8 +7,10 @@ import (
 	"os"
 
 	"github.com/IAmRiteshKoushik/mercury/cmd"
+	"github.com/IAmRiteshKoushik/mercury/middleware"
 	"github.com/IAmRiteshKoushik/mercury/routes"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func StartApp() {
@@ -57,20 +59,29 @@ func StartApp() {
 	cmd.Log = cmd.NewLoggerService(cmd.EnvVars.Environment, f)
 
 	// Initialize Server
-	InitServer()
+	server := InitServer()
+	err = server.Run(":" + string(cmd.EnvVars.Port))
+	if err != nil {
+		panic(fmt.Errorf(failMsg, err))
+	}
 }
 
 func InitServer() *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Logger())
+	router.Use(middleware.PromMiddleweare)
 
-	// Test route
+	// Test endpoint
 	router.GET("/api/v1/test", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Server is LIVE",
 		})
 		c.Done()
 	})
+
+	// Metrics endpoint
+	// TODO: Should not be open to the world
+	router.GET("/api/v1/metrics", gin.WrapH(promhttp.Handler()))
 
 	// TODO: Handle in next release
 	// routes.AccountRoutes(v1)
