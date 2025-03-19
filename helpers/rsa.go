@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"os"
@@ -24,44 +25,52 @@ func GenerateRSAKeyPair(bits int) error {
 		Bytes: x509.MarshalPKCS1PublicKey(publicKey),
 	})
 
-	if err := os.WriteFile("private_key.pem", privateKeyPEM, 0600); err != nil {
+	if err := os.WriteFile("keys/app.rsa", privateKeyPEM, 0600); err != nil {
 		return fmt.Errorf("Error saving private key: %w", err)
 	}
-	if err := os.WriteFile("public_key.pem", publicKeyPEM, 0644); err != nil {
+	if err := os.WriteFile("keys/app.pub.rsa", publicKeyPEM, 0644); err != nil {
 		return fmt.Errorf("error saving public key: %w", err)
 	}
 	fmt.Println("RSA keypair generated and saved successfully")
 	return nil
 }
 
-func LoadPrivateKey(filename string) (*rsa.PrivateKey, error) {
-	data, err := os.ReadFile(filename)
+func LoadPrivateKeyHex() (string, error) {
+	data, err := os.ReadFile("keys/app.rsa")
 	if err != nil {
-		return nil, fmt.Errorf("Failed to read private key file: %w", err)
+		return "", fmt.Errorf("Failed to read private key file: %w", err)
 	}
 	block, _ := pem.Decode(data)
 	if block == nil {
-		return nil, fmt.Errorf("Failed to decode PEM block in private key")
+		return "", fmt.Errorf("Invalid private key PEM data.")
 	}
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse private key: %w", err)
+		return "", fmt.Errorf("Failed to parse private key: %w", err)
 	}
-	return privateKey, nil
+
+	privateKeyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
+	privateKeyHex := hex.EncodeToString(privateKeyBytes)
+
+	return privateKeyHex, nil
 }
 
-func LoadPublicKey(filename string) (*rsa.PublicKey, error) {
-	data, err := os.ReadFile(filename)
+func LoadPublicKeyHex() (string, error) {
+	data, err := os.ReadFile("keys/app.pub.rsa")
 	if err != nil {
-		return nil, fmt.Errorf("Failed to read public key file: %w", err)
+		return "", fmt.Errorf("Failed to read public key file: %w", err)
 	}
 	block, _ := pem.Decode(data)
-	if block == nil {
-		return nil, fmt.Errorf("Failed to decode PEM block in public key")
+	if block == nil || block.Type != "PUBLIC KEY" {
+		return "", fmt.Errorf("Invalid public key PEM data.")
 	}
 	publicKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse public key: %w", err)
+		return "", fmt.Errorf("Failed to parse public key: %w", err)
 	}
-	return publicKey, nil
+
+	publicKeyBytes := x509.MarshalPKCS1PublicKey(publicKey)
+	publicKeyHex := hex.EncodeToString(publicKeyBytes)
+
+	return publicKeyHex, nil
 }

@@ -1,114 +1,109 @@
 package helpers
 
 import (
-	"crypto/x509"
-	"encoding/pem"
-	"fmt"
+	"bytes"
+	"crypto/rand"
+	"encoding/base64"
 	"time"
 
-	"github.com/o1egl/paseto/v2"
+	"aidanwoods.dev/go-paseto"
 )
 
-type Payload struct {
-	Username  string
-	Email     string
-	TokenType string
-	ExpiryAt  time.Time
+const (
+	RefreshTokenValidTime = time.Hour * 24 * 90
+	AuthTokenValidTime    = time.Minute * 30
+	privateKeyPath        = "keys/app.rsa"
+	publicKeyPath         = "keys/app.rsa.pub"
+)
+
+type TokenClaims struct {
+	Id        string
+	Issuer    string
+	IssuedAt  time.Time
+	ExpiresAt time.Duration
+	Role      string `json:"role"`
+	Csrf      string `json:"csrf"`
 }
 
-func GenerateTokens(username string, email string) (string, string, error) {
-	// Access token valid for 1 hour
-	accessToken, err := CreateToken(username, email, "access", 60*time.Minute)
+var (
+	VerifyKey paseto.V4AsymmetricPublicKey
+	SignKey   paseto.V4AsymmetricSecretKey
+)
+
+func InitPaseto() error {
+	privateKeyHex, err := LoadPrivateKeyHex()
 	if err != nil {
-		return "", "", fmt.Errorf("Failed to generate access token.\n%w", err)
+		return err
 	}
-	// Refresh token valid for 150 days
-	refreshToken, err := CreateToken(username, email, "access", 150*24*time.Hour)
+	publicKeyHex, err := LoadPublicKeyHex()
 	if err != nil {
-		return "", "", fmt.Errorf("Failed to generate refresh token.\n%w", err)
+		return err
 	}
-	return accessToken, refreshToken, nil
-}
-
-func CreateToken(username string, email string,
-	tokenType string, expiresIn time.Duration) (string, error) {
-	payload := Payload{
-		Username:  username,
-		Email:     email,
-		TokenType: tokenType,
-		ExpiryAt:  time.Now().Add(expiresIn),
-	}
-
-	// Accessign private key
-	privateKey, err := LoadPrivateKey("private_key.pem")
+	// Verify using public key
+	VerifyKey, err = paseto.NewV4AsymmetricPublicKeyFromHex(publicKeyHex)
 	if err != nil {
-		return "", err
+		return err
 	}
-	privPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
-	})
-
-	token, err := paseto.NewV2().Encrypt(privPEM, payload, nil)
+	// Sign using private key
+	SignKey, err = paseto.NewV4AsymmetricSecretKeyFromHex(privateKeyHex)
 	if err != nil {
-		return "", fmt.Errorf("Failed to encode token: %w", err)
+		return err
 	}
-
-	return token, nil
-}
-
-func VerifyToken(token string) (*Payload, error) {
-	payload := &Payload{}
-
-	// Accessing public key
-	publicKey, err := LoadPublicKey("public_key.pem")
-	if err != nil {
-		return payload, fmt.Errorf("Failed to load public key: %w", err)
-	}
-	pubPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PUBLIC KEY",
-		Bytes: x509.MarshalPKCS1PublicKey(publicKey),
-	})
-
-	err = paseto.NewV2().Decrypt(token, pubPEM, payload, nil)
-	if err != nil {
-		return payload, err
-	}
-	return payload, nil
-}
-
-func CreateNewTokens(uuid, role string) (auth, refresh, csrfSecret string) {
-	return "", "", ""
-}
-
-func CheckAndRefreshTokens(oldAuth, oldRefresh, oldCsrf string) (newAuth, newRefresh, newCsrf string, err error) {
-	return "", "", "", nil
-}
-
-func CreateAuthTokenString(uuid, role, csrfSecret string) (auth string, err error) {
-	return "", nil
-}
-
-func UpdateAuthTokenString(refresh, oldAuth string) (newAuth, csrf string, err error) {
-	return "", "", nil
-}
-
-func CreateRefreshTokenString(uuid, role, csrfSecret string) (refresh string, err error) {
-	return "", nil
-}
-
-func UpdateRefreshTokenExp(oldRefresh string) (newRefresh string, err error) {
-	return "", nil
-}
-
-func RevokeRefreshToken(refresh string) error {
 	return nil
 }
 
-func UpdateRefreshTokenCsrf(oldRefresh, newCsrfSecret string) (newRefresh string, err error) {
-	return "", nil
+func GenerateCsrfSecret() (string, error) {
+	token := make([]byte, 32)
+	_, err := rand.Read(token)
+	if err != nil {
+		return "", err
+	}
+
+	csrfToken := base64.StdEncoding.EncodeToString(token)
+	return csrfToken, nil
 }
 
-func GrabUUID(auth string) (string, error) {
-	return "", nil
+func VerifyCsrfSecret(cookieCsrf, headerCsrf string) bool {
+	decodedCsrfFromCookie, err := base64.StdEncoding.DecodeString(cookieCsrf)
+	if err != nil {
+		return false
+	}
+	decodedCsrfFromHeader, err := base64.StdEncoding.DecodeString(headerCsrf)
+	if err != nil {
+		return false
+	}
+
+	if bytes.Equal(decodedCsrfFromCookie, decodedCsrfFromHeader) {
+		return true
+	}
+	return false
 }
+
+// func CreateAuthToken(email, role, csrf string) (auth string, err error) {
+//
+// }
+//
+// func CreateRefreshToken(email, role, csrf string) (auth string, err error) {
+//
+// }
+//
+// func CreateTokens(email, role string) (auth, refresh, csrf string, err error) {
+//
+// }
+//
+// func UpdateAuthToken(oldAuth, refresh string) (newAuth, csrf string, err error) {
+//
+// }
+//
+// func UpdateRefreshToken(oldRefresh string) (newRefresh string, err error) {
+//
+// }
+//
+// func VerifyAndRefreshTokens(oldauth, oldRefresh, oldCsrf string) (newAuth,
+// 	newRefresh, newCsrf string, err error) {
+//
+// }
+//
+// func RevokeRefreshToken(refresh string) error {
+//
+// }
