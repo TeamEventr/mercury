@@ -6,11 +6,15 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/IAmRiteshKoushik/mercury/cmd"
-	"github.com/IAmRiteshKoushik/mercury/middleware"
-	"github.com/IAmRiteshKoushik/mercury/routes"
 	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/IAmRiteshKoushik/mercury/cmd"
+	"github.com/IAmRiteshKoushik/mercury/helpers"
+	mw "github.com/IAmRiteshKoushik/mercury/middleware"
+	rAuth "github.com/IAmRiteshKoushik/mercury/routes/auth"
+	rUser "github.com/IAmRiteshKoushik/mercury/routes/customer"
+	rHost "github.com/IAmRiteshKoushik/mercury/routes/host"
+	rStaff "github.com/IAmRiteshKoushik/mercury/routes/staff"
 )
 
 func StartApp() {
@@ -22,6 +26,16 @@ func StartApp() {
 		panic(fmt.Errorf(failMsg, err))
 	}
 	cmd.EnvVars = env
+
+	// Setup RSA + Initialize PASETO
+	err = helpers.GenerateRSAKeyPair(2048)
+	if err != nil {
+		panic(fmt.Errorf(failMsg, err))
+	}
+	err = helpers.InitPaseto()
+	if err != nil {
+		panic(fmt.Errorf(failMsg, err))
+	}
 
 	// Initialize database connection pool
 	cmd.DBPool, err = cmd.InitDB()
@@ -69,7 +83,7 @@ func StartApp() {
 func InitServer() *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Logger())
-	router.Use(middleware.PromMiddleweare)
+	router.Use(mw.PromMiddleweare)
 
 	// Test endpoint
 	router.GET("/api/v1/test", func(c *gin.Context) {
@@ -80,18 +94,35 @@ func InitServer() *gin.Engine {
 	})
 
 	// Metrics endpoint
-	// TODO: Should not be open to the world
-	router.GET("/api/v1/metrics", gin.WrapH(promhttp.Handler()))
+	// Setup prometheus metrics for this endpoint
 
 	// TODO: Handle in next release
 	// routes.AccountRoutes(v1)
 
 	v1 := router.Group("/api/v1")
-	routes.AuthRoutes(v1)
-	routes.ProfileRoutes(v1)
-	routes.EventRoutes(v1)
-	routes.PaymentRoutes(v1)
-	routes.DashboardRoutes(v1)
+
+	authRouter := v1.Group("/auth")
+	customerRouter := v1.Group("/user")
+	hostRouter := v1.Group("/host")
+	staffRouter := v1.Group("/staff")
+
+	rAuth.AuthRoutes(authRouter)
+
+	rUser.CustomerEventRoutes(customerRouter)
+	rUser.CustomerProfileRoutes(customerRouter)
+	rUser.CustomerBookmarkRoutes(customerRouter)
+	rUser.CustomerPaymentRoutes(customerRouter)
+	rUser.CustomerTicketRoutes(customerRouter)
+
+	rHost.HostDashboardRoutes(hostRouter)
+	rHost.HostEventRoutes(hostRouter)
+	rHost.HostArtistRoutes(hostRouter)
+	rHost.HostPricingRoutes(hostRouter)
+	rHost.HostSearchRoutes(hostRouter)
+	rHost.HostStaffRoutes(hostRouter)
+
+	rStaff.StaffEventRoutes(staffRouter)
+	rStaff.StaffTicketRoutes(staffRouter)
 
 	return router
 }
