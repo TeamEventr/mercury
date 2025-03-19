@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/joho/godotenv"
 )
 
 var EnvVars *EnvConfig
@@ -27,6 +29,11 @@ type EnvConfig struct {
 }
 
 func NewEnvConfig() (*EnvConfig, error) {
+	err := godotenv.Load()
+	if err != nil {
+		return nil, fmt.Errorf(".env file not found")
+	}
+
 	cfg := &EnvConfig{}
 	validEnvs := []string{"development", "testing", "production"}
 
@@ -66,19 +73,19 @@ func NewEnvConfig() (*EnvConfig, error) {
 	}
 	cfg.Port = portNum
 	if dbUrl == "" {
-		return nil, fmt.Errorf("PORT environment variable is missing.")
+		return nil, fmt.Errorf("DATABASE_URL environment variable is missing.")
 	}
 	cfg.DBUrl = dbUrl
 	if rzpKey == "" {
-		return nil, fmt.Errorf("DATABASE_URL environment variable is missing.")
+		return nil, fmt.Errorf("RAZORPAY_CLIENT_ID environment variable is missing.")
 	}
 	cfg.RzpKey = rzpKey
 	if rzpSecret == "" {
-		return nil, fmt.Errorf("RAZORPAY_SECRET environment variable is missing.")
+		return nil, fmt.Errorf("RAZORPAY_CLIENT_SECRET environment variable is missing.")
 	}
 	cfg.RzpSecret = rzpSecret
 	if oauthClientId == "" {
-		return nil, fmt.Errorf("RAZORPAY_CLIENT_ID environment variable is missing.")
+		return nil, fmt.Errorf("OAUTH_CLIENT_ID environment variable is missing.")
 	}
 	cfg.OAuthClient = oauthClientId
 	if oauthClientSecret == "" {

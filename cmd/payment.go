@@ -34,7 +34,7 @@ func (rzp *RzpConfig) ObtainKey() string {
 	return rzp.Key
 }
 
-func (rzp *RzpConfig) ExecuteRazorpay(amount int, eventId, name, contact,
+func (rzp *RzpConfig) ExecutePayment(amount int, eventId, name, contact,
 	email, desc, txnId string) (string, error) {
 
 	options := map[string]interface{}{
@@ -42,6 +42,7 @@ func (rzp *RzpConfig) ExecuteRazorpay(amount int, eventId, name, contact,
 		"currency":        "INR",
 		"receipt":         txnId,
 		"payment_capture": true, // automatically capture payment
+		"partial_payment": false,
 		"notes": map[string]interface{}{
 			"event_id": eventId,
 		},
@@ -56,6 +57,7 @@ func (rzp *RzpConfig) ExecuteRazorpay(amount int, eventId, name, contact,
 	if err != nil {
 		return "", fmt.Errorf("Payment not initiated")
 	}
+	fmt.Print(order) // DEBUG
 	razorId, _ := order["id"].(string)
 	return razorId, nil
 }

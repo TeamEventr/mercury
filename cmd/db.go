@@ -20,7 +20,7 @@ func InitDB() (*pgxpool.Pool, error) {
 	}
 
 	// Configure Pool Settings
-	poolConfig.MaxConns = 10
+	poolConfig.MaxConns = 100
 	poolConfig.MinConns = 10
 	poolConfig.MaxConnLifetime = time.Hour / 2
 

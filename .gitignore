@@ -7,3 +7,5 @@ tmp/
 
 # Ignore PEM files
 *.pem
+# Added by goreleaser init:
+dist/

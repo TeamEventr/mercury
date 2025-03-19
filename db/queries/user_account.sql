@@ -1,4 +1,4 @@
--- name: DBCheckUserExist :one
+-- name: CheckUserExist :one
 -- Check whether a user_account exists or not.
 SELECT EXISTS (
   SELECT 1
@@ -6,9 +6,9 @@ SELECT EXISTS (
     user_account
   WHERE 
     username = $1
-); 
+);
 
--- name: DBCheckUserBanned :one
+-- name: CheckUserBanned :one
 -- Check whether a user_account is banned or not.
 SELECT EXISTS (
   SELECT 1 
@@ -19,7 +19,7 @@ SELECT EXISTS (
     AND status = 'banned'
 );
 
--- name: DBCheckUserDisabled :one
+-- name: CheckUserDisabled :one
 -- Check whether a user_account is disabled or not.
 SELECT EXISTS (
   SELECT 1 
@@ -30,7 +30,7 @@ SELECT EXISTS (
     AND status = 'disabled'
 );
 
--- name: DBLoginUser :one
+-- name: LoginUser :one
 -- Check login credentials post hashing the password against an active account.
 SELECT 
   username,
@@ -48,7 +48,7 @@ WHERE
   AND password = $2
   AND status = 'active';
 
--- name: DBOnboardUser :one
+-- name: OnboardUser :one
 -- Insert a onboarding record with an otp and an expiry time.
 INSERT INTO 
   user_onboarding (
@@ -66,7 +66,7 @@ RETURNING
   otp, 
   expiry_at;
 
--- name: DBVerifyUserOTP :one
+-- name: VerifyUserOTP :one
 SELECT
   username,
   password,
@@ -78,7 +78,7 @@ WHERE
   AND otp = $2
   AND expiry_at >= NOW() - INTERVAL '5 minutes';
 
--- name: DBGetUserOnboardingOTP :one
+-- name: GetUserOnboardingOTP :one
 SELECT *
 FROM
   user_onboarding
@@ -86,7 +86,8 @@ WHERE
   username = $1
   AND expiry_at >= NOW() - INTERVAL '5 minutes';
 
--- name: DBCreateUserAccount :one
+-- name: CreateUserAccount :one
+-- User account is to be created only after OTP verification is successful
 INSERT INTO
   user_account (
     username, 
@@ -109,7 +110,8 @@ RETURNING
   city,
   refresh_token;
 
--- name: DBEditUserAccount :one
+-- name: EditUserAccount :one
+-- Any field can change (not email, password)
 UPDATE 
   user_account
 SET
@@ -129,7 +131,18 @@ RETURNING
   gender,
   city;
 
--- name: DBEditUserAvatar :one
+-- name: EditUserPassword :exec
+-- FIX: Edit the user password post OTP confirmation
+UPDATE
+  user_account
+SET
+  password = $2
+WHERE
+  username = $1
+  AND status = 'active';
+
+-- name: EditUserAvatar :one
+-- Alter the uploaded avatar image in s3 and update db (s3 shouldn't fail)
 UPDATE
   user_account
 SET
@@ -140,7 +153,8 @@ WHERE
 RETURNING
   avatar;
 
--- name: DBDeleteUserAvatar :one
+-- name: DeleteUserAvatar :one
+-- Remove the avatar from s3 and db (db shouldn't fail)
 UPDATE
   user_account
 SET
@@ -151,7 +165,8 @@ WHERE
 RETURNING
   avatar;
 
--- name: DBDisableUserAccount :exec
+-- name: DisableUserAccount :exec
+-- FIX: Disable a user account post OTP confirmation
 UPDATE
   user_account
 SET
@@ -160,7 +175,8 @@ WHERE
   username = $1
   AND status = 'active';
 
--- name: DBEnableUserAccount :exec
+-- name: EnableUserAccount :exec
+-- FIX: Enable a user account post OTP confirmation
 UPDATE
   user_account
 SET

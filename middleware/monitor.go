@@ -7,7 +7,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// Metrics
 var (
 	totalRequests = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "http_requests_total",
@@ -34,7 +33,6 @@ var (
 	})
 )
 
-// Special function in Go which is called automatically
 func init() {
 	prometheus.MustRegister(totalRequests)
 	prometheus.MustRegister(inFlightRequest)
