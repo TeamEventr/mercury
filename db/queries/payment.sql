@@ -1,0 +1,3 @@
+-- name: InitTnx :one
+-- name: CompleteTxn :one
+-- name: FailedTxn :one

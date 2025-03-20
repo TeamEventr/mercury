@@ -143,6 +143,53 @@ func (ns NullEnumEventSchedule) Value() (driver.Value, error) {
 	return string(ns.EnumEventSchedule), nil
 }
 
+type EnumEventType string
+
+const (
+	EnumEventTypeMusic    EnumEventType = "music"
+	EnumEventTypeSports   EnumEventType = "sports"
+	EnumEventTypeArts     EnumEventType = "arts"
+	EnumEventTypeFood     EnumEventType = "food"
+	EnumEventTypeTech     EnumEventType = "tech"
+	EnumEventTypeBusiness EnumEventType = "business"
+	EnumEventTypeOthers   EnumEventType = "others"
+)
+
+func (e *EnumEventType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = EnumEventType(s)
+	case string:
+		*e = EnumEventType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for EnumEventType: %T", src)
+	}
+	return nil
+}
+
+type NullEnumEventType struct {
+	EnumEventType EnumEventType
+	Valid         bool // Valid is true if EnumEventType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullEnumEventType) Scan(value interface{}) error {
+	if value == nil {
+		ns.EnumEventType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.EnumEventType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullEnumEventType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.EnumEventType), nil
+}
+
 type EnumEventVisibility string
 
 const (
@@ -282,8 +329,8 @@ type Bookmark struct {
 type Event struct {
 	ID              uuid.UUID
 	Title           string
+	Type            EnumEventType
 	HostID          uuid.UUID
-	Blurb           pgtype.Text
 	Description     pgtype.Text
 	CoverPictureUrl pgtype.Text
 	BannerUrl       pgtype.Text
@@ -295,9 +342,15 @@ type Event struct {
 	StartTime       interface{}
 	EndTime         interface{}
 	AgeLimit        pgtype.Int4
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	CreatedAt       interface{}
+	UpdatedAt       interface{}
 	DeletedAt       interface{}
+}
+
+type EventArtist struct {
+	ID       int32
+	EventID  uuid.UUID
+	Username string
 }
 
 type EventImage struct {
@@ -359,8 +412,8 @@ type PriceTier struct {
 	Price            int32
 	SeatAvailable    int32
 	TotalSeat        int32
-	BookingOpenTime  time.Time
-	BookingCloseTime time.Time
+	BookingOpenTime  interface{}
+	BookingCloseTime interface{}
 	BookingStatus    NullEnumBookingStatus
 }
 

@@ -5,6 +5,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TYPE enum_account_status as ENUM ('active', 'disabled', 'banned', 'deleted');
 CREATE TYPE enum_event_schedule as ENUM ('ontime', 'prepond', 'postponed', 'cancelled');
 CREATE TYPE enum_event_visibility as ENUM ('draft', 'published');
+CREATE TYPE enum_event_type as ENUM ('music', 'sports', 'arts', 'food', 'tech',
+'business', 'others');
 CREATE TYPE enum_booking_status as ENUM ('open', 'closed');
 CREATE TYPE enum_hosted_status as ENUM ('under_five', 'under_twenty', 'under_fifty', 'under_hundred', 'more');
 CREATE TYPE enum_gender_options as ENUM ('male', 'female', 'others');
@@ -28,7 +30,7 @@ CREATE TABLE user_account (
   status enum_account_status NOT NULL DEFAULT 'active',
   loggedin_at TIMESTAMPZ NULL,
   refresh_token TEXT NULL,
-  created_at TIMESTAMPZ DEFAULT NOW(), 
+  created_at TIMESTAMPZ DEFAULT NOW(),
   updated_at TIMESTAMPZ DEFAULT NOW(),
   deleted_at TIMESTAMPZ NULL,
 
@@ -61,7 +63,7 @@ CREATE TABLE verification_actions (
   otp TEXT NOT NULL,
   expiry_at TIMESTAMPZ NOT NULL,
 
-  CONSTRAINT "verification_actions_username_fkey" 
+  CONSTRAINT "verification_actions_username_fkey"
     FOREIGN KEY (username)
       REFERENCES user_account(username)
         ON DELETE CASCADE
@@ -134,8 +136,8 @@ CREATE TABLE host_onboarding (
 CREATE TABLE event (
   id UUID NOT NULL,
   title TEXT NOT NULL,
+  type enum_event_type NOT NULL DEFAULT 'music',
   host_id UUID NOT NULL,
-  blurb TEXT NULL,
   description TEXT NULL,
   cover_picture_url TEXT NULL,
   banner_url TEXT NULL,
@@ -147,8 +149,8 @@ CREATE TABLE event (
   start_time TIMESTAMPZ NULL,
   end_time TIMESTAMPZ NULL,
   age_limit INTEGER DEFAULT 18,
-  created_at TIMESTAMPZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPZ DEFAULT NOW(),
+  updated_at TIMESTAMPZ DEFAULT NOW(),
   deleted_at TIMESTAMPZ,
 
   CONSTRAINT "event_pkey" PRIMARY KEY (id),
@@ -170,7 +172,7 @@ CREATE TABLE event_image (
   url TEXT NOT NULL,
 
   CONSTRAINT "event_image_pkey" PRIMARY KEY (id),
-  CONSTRAINT "event_image_event_id_fkey" 
+  CONSTRAINT "event_image_event_id_fkey"
     FOREIGN KEY (event_id)
       REFERENCES event(id)
         ON DELETE CASCADE
@@ -187,8 +189,8 @@ CREATE TABLE price_tier (
   price INTEGER NOT NULL,
   seat_available INTEGER NOT NULL DEFAULT 0,
   total_seat INTEGER NOT NULL DEFAULT 0,
-  booking_open_time TIMESTAMPZ NOT NULL,
-  booking_close_time TIMESTAMPZ NOT NULL,
+  booking_open_time TIMESTAMPZ NULL,
+  booking_close_time TIMESTAMPZ NULL,
   booking_status enum_booking_status DEFAULT 'open',
 
   CONSTRAINT "price_tier_pkey" PRIMARY KEY (id),
@@ -240,7 +242,7 @@ CREATE TABLE volunteer (
   removed BOOLEAN DEFAULT false,
 
   CONSTRAINT "volunteer_pkey" PRIMARY KEY (id),
-  CONSTRAINT "volunteer_username_fkey" 
+  CONSTRAINT "volunteer_username_fkey"
     FOREIGN KEY (username)
       REFERENCES user_account(username)
         ON DELETE RESTRICT
@@ -260,10 +262,10 @@ CREATE TABLE bookmark (
   event_id UUID NOT NULL,
 
   CONSTRAINT "bookmark_pkey" PRIMARY KEY (id),
-  CONSTRAINT "bookmark_username_fkey" 
+  CONSTRAINT "bookmark_username_fkey"
     FOREIGN KEY (username)
-      REFERENCES user_account(username) 
-        ON DELETE RESTRICT 
+      REFERENCES user_account(username)
+        ON DELETE RESTRICT
         ON UPDATE CASCADE,
   CONSTRAINT "bookmark_eventid_fkey"
     FOREIGN KEY (event_id)
@@ -272,4 +274,25 @@ CREATE TABLE bookmark (
       ON UPDATE CASCADE
 );
 CREATE UNIQUE INDEX idx_bookmark_username_event_id ON bookmark(username, event_id);
+-- +goose statementEnd
+
+-- +goose Up
+-- +goose statementBegin
+CREATE TABLE event_artist(
+    id SERIAL NOT NULL,
+    event_id UUID NOT NULL,
+    username TEXT NOT NULL,
+
+    CONSTRAINT "event_artist_pkey" PRIMARY KEY (id),
+    CONSTRAINT "event_user_event_id_fkey"
+        FOREIGN KEY (event_id)
+            REFERENCES event(event_id)
+                ON DELETE CASCADE
+                ON UPDATE CASCADE,
+    CONSTRAINT "event_user_username_fkey"
+        FOREIGN KEY (username)
+            REFERENCES user_account(username)
+                ON DELETE CASCADE
+                ON UPDATE CASCADE
+);
 -- +goose statementEnd
