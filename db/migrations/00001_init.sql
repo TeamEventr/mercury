@@ -282,6 +282,7 @@ CREATE TABLE event_artist(
     id SERIAL NOT NULL,
     event_id UUID NOT NULL,
     username TEXT NOT NULL,
+    role TEXT NOT NULL,
 
     CONSTRAINT "event_artist_pkey" PRIMARY KEY (id),
     CONSTRAINT "event_user_event_id_fkey"

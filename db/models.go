@@ -351,6 +351,7 @@ type EventArtist struct {
 	ID       int32
 	EventID  uuid.UUID
 	Username string
+	Role     string
 }
 
 type EventImage struct {

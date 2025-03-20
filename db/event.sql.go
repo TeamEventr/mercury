@@ -83,3 +83,248 @@ func (q *Queries) CreateEventQuery(ctx context.Context, db DBTX, arg CreateEvent
 	)
 	return i, err
 }
+
+const deleteEventPosterQuery = `-- name: DeleteEventPosterQuery :one
+UPDATE event
+SET
+    cover_picture_url = null
+WHERE
+    visibility = 'draft' AND
+    id = $1 AND
+    host_id = $2
+RETURNING
+    id
+`
+
+type DeleteEventPosterQueryParams struct {
+	ID     uuid.UUID
+	HostID uuid.UUID
+}
+
+// Delete an Event poster based on eventId
+func (q *Queries) DeleteEventPosterQuery(ctx context.Context, db DBTX, arg DeleteEventPosterQueryParams) (uuid.UUID, error) {
+	row := db.QueryRow(ctx, deleteEventPosterQuery, arg.ID, arg.HostID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const deleteUnpublishedEventQuery = `-- name: DeleteUnpublishedEventQuery :one
+DELETE FROM event
+WHERE
+    host_id = $1 AND
+    id = $2 AND
+    visibility = 'draft'
+RETURNING
+    id
+`
+
+type DeleteUnpublishedEventQueryParams struct {
+	HostID uuid.UUID
+	ID     uuid.UUID
+}
+
+// Delete an unpublished Event based on EventId and HostId
+func (q *Queries) DeleteUnpublishedEventQuery(ctx context.Context, db DBTX, arg DeleteUnpublishedEventQueryParams) (uuid.UUID, error) {
+	row := db.QueryRow(ctx, deleteUnpublishedEventQuery, arg.HostID, arg.ID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const editEventQuery = `-- name: EditEventQuery :exec
+
+UPDATE event
+SET
+    visibility = 'published'
+WHERE
+    id = $1 AND
+    host_id = $2
+`
+
+type EditEventQueryParams struct {
+	ID     uuid.UUID
+	HostID uuid.UUID
+}
+
+// Edit an existing Event based on the EventId
+// UPDATE;
+// Publish Event based on EventId and hostId
+func (q *Queries) EditEventQuery(ctx context.Context, db DBTX, arg EditEventQueryParams) error {
+	_, err := db.Exec(ctx, editEventQuery, arg.ID, arg.HostID)
+	return err
+}
+
+const fetchEventByHostQuery = `-- name: FetchEventByHostQuery :many
+SELECT
+    e.title,
+    e.type,
+    e.cover_picture_url,
+    e.visibility,
+    e.start_time
+FROM event AS e
+INNER JOIN host as h ON
+    h.id = e.host_id
+WHERE
+    h.username = $1
+`
+
+type FetchEventByHostQueryRow struct {
+	Title           string
+	Type            EnumEventType
+	CoverPictureUrl pgtype.Text
+	Visibility      EnumEventVisibility
+	StartTime       interface{}
+}
+
+// Fetch all Event by HostId
+func (q *Queries) FetchEventByHostQuery(ctx context.Context, db DBTX, username string) ([]FetchEventByHostQueryRow, error) {
+	rows, err := db.Query(ctx, fetchEventByHostQuery, username)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FetchEventByHostQueryRow
+	for rows.Next() {
+		var i FetchEventByHostQueryRow
+		if err := rows.Scan(
+			&i.Title,
+			&i.Type,
+			&i.CoverPictureUrl,
+			&i.Visibility,
+			&i.StartTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fetchEventByIdQuery = `-- name: FetchEventByIdQuery :one
+SELECT
+    e.title,
+    e.type,
+    e.description,
+    e.thumbnail_url,
+    e.tags,
+    e.venue,
+    e.start_time,
+    e.end_time,
+    e.age_limit,
+    array_agg(json_build_object(
+        'first_name', u.first_name,
+        'last_name', u.last_name,
+        'avatar', u.avatar,
+        'username', ea.username
+    )) AS artists,
+    array_agg(json_build_object(
+        'id', pt.id,
+        'name', pt.name,
+        'price', pt.price,
+        'seat_available', pt.seat_available
+    )) AS price_tiers
+FROM
+    event AS e
+INNER JOIN event_artist AS ea ON
+    e.id = ea.event_id
+INNER JOIN user_account AS u ON
+    u.username = ea.username
+INNER JOIN price_tier AS pt ON
+    e.id = pt.event_id
+WHERE
+    e.id = $1 AND
+    e.visibility = 'published' AND
+    pt.booking_status = 'open'
+`
+
+type FetchEventByIdQueryRow struct {
+	Title        string
+	Type         EnumEventType
+	Description  pgtype.Text
+	ThumbnailUrl pgtype.Text
+	Tags         []string
+	Venue        pgtype.Text
+	StartTime    interface{}
+	EndTime      interface{}
+	AgeLimit     pgtype.Int4
+	Artists      interface{}
+	PriceTiers   interface{}
+}
+
+// Fetch all Event details by EventId
+func (q *Queries) FetchEventByIdQuery(ctx context.Context, db DBTX, id uuid.UUID) (FetchEventByIdQueryRow, error) {
+	row := db.QueryRow(ctx, fetchEventByIdQuery, id)
+	var i FetchEventByIdQueryRow
+	err := row.Scan(
+		&i.Title,
+		&i.Type,
+		&i.Description,
+		&i.ThumbnailUrl,
+		&i.Tags,
+		&i.Venue,
+		&i.StartTime,
+		&i.EndTime,
+		&i.AgeLimit,
+		&i.Artists,
+		&i.PriceTiers,
+	)
+	return i, err
+}
+
+const fetchEventsPaginatedQuery = `-- name: FetchEventsPaginatedQuery :many
+SELECT
+    title,
+    cover_picture_url,
+    tags,
+    venue,
+    start_time,
+    age_limit
+FROM event
+WHERE
+    visibility = 'published'
+ORDER BY
+    start_time
+LIMIT 25
+OFFSET $1
+`
+
+type FetchEventsPaginatedQueryRow struct {
+	Title           string
+	CoverPictureUrl pgtype.Text
+	Tags            []string
+	Venue           pgtype.Text
+	StartTime       interface{}
+	AgeLimit        pgtype.Int4
+}
+
+// Fetch all Events in a paginated format
+func (q *Queries) FetchEventsPaginatedQuery(ctx context.Context, db DBTX, offset int32) ([]FetchEventsPaginatedQueryRow, error) {
+	rows, err := db.Query(ctx, fetchEventsPaginatedQuery, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FetchEventsPaginatedQueryRow
+	for rows.Next() {
+		var i FetchEventsPaginatedQueryRow
+		if err := rows.Scan(
+			&i.Title,
+			&i.CoverPictureUrl,
+			&i.Tags,
+			&i.Venue,
+			&i.StartTime,
+			&i.AgeLimit,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
