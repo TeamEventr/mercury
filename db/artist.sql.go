@@ -22,7 +22,7 @@ SELECT
 FROM
     user_account
 WHERE
-    username = ANY ($1::varchar[])
+    username = ANY ($1::TEXT[])
 `
 
 func (q *Queries) VerifyArtistQuery(ctx context.Context, db DBTX, dollar_1 []string) error {

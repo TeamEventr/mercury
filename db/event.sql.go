@@ -87,7 +87,8 @@ func (q *Queries) CreateEventQuery(ctx context.Context, db DBTX, arg CreateEvent
 const deleteEventPosterQuery = `-- name: DeleteEventPosterQuery :one
 UPDATE event
 SET
-    cover_picture_url = null
+    cover_picture_url = null,
+    updated_at = NOW()
 WHERE
     visibility = 'draft' AND
     id = $1 AND
@@ -136,7 +137,8 @@ const editEventQuery = `-- name: EditEventQuery :exec
 
 UPDATE event
 SET
-    visibility = 'published'
+    visibility = 'published',
+    updated_at = NOW()
 WHERE
     id = $1 AND
     host_id = $2
@@ -206,20 +208,20 @@ func (q *Queries) FetchEventByHostQuery(ctx context.Context, db DBTX, username s
 
 const fetchEventByIdQuery = `-- name: FetchEventByIdQuery :one
 SELECT
-    e.title,
-    e.type,
-    e.description,
-    e.thumbnail_url,
-    e.tags,
-    e.venue,
-    e.start_time,
-    e.end_time,
-    e.age_limit,
+    e.title as event_name,
+    e.type as event_type,
+    e.description AS description,
+    e.thumbnail_url AS event_poster_url,
+    e.tags AS tags,
+    e.venue AS venue,
+    e.start_time AS start_time,
+    e.end_time AS end_time,
+    e.age_limit AS age_limit,
     array_agg(json_build_object(
         'first_name', u.first_name,
         'last_name', u.last_name,
         'avatar', u.avatar,
-        'username', ea.username
+        'username', u.username
     )) AS artists,
     array_agg(json_build_object(
         'id', pt.id,
@@ -242,17 +244,17 @@ WHERE
 `
 
 type FetchEventByIdQueryRow struct {
-	Title        string
-	Type         EnumEventType
-	Description  pgtype.Text
-	ThumbnailUrl pgtype.Text
-	Tags         []string
-	Venue        pgtype.Text
-	StartTime    interface{}
-	EndTime      interface{}
-	AgeLimit     pgtype.Int4
-	Artists      interface{}
-	PriceTiers   interface{}
+	EventName      string
+	EventType      EnumEventType
+	Description    pgtype.Text
+	EventPosterUrl pgtype.Text
+	Tags           []string
+	Venue          pgtype.Text
+	StartTime      interface{}
+	EndTime        interface{}
+	AgeLimit       pgtype.Int4
+	Artists        interface{}
+	PriceTiers     interface{}
 }
 
 // Fetch all Event details by EventId
@@ -260,10 +262,10 @@ func (q *Queries) FetchEventByIdQuery(ctx context.Context, db DBTX, id uuid.UUID
 	row := db.QueryRow(ctx, fetchEventByIdQuery, id)
 	var i FetchEventByIdQueryRow
 	err := row.Scan(
-		&i.Title,
-		&i.Type,
+		&i.EventName,
+		&i.EventType,
 		&i.Description,
-		&i.ThumbnailUrl,
+		&i.EventPosterUrl,
 		&i.Tags,
 		&i.Venue,
 		&i.StartTime,

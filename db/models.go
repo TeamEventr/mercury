@@ -344,7 +344,6 @@ type Event struct {
 	AgeLimit        pgtype.Int4
 	CreatedAt       interface{}
 	UpdatedAt       interface{}
-	DeletedAt       interface{}
 }
 
 type EventArtist struct {
@@ -366,33 +365,23 @@ type Host struct {
 	Username           string
 	PanNumber          pgtype.Text
 	AccountNumber      pgtype.Text
-	FirstName          string
-	MiddleName         pgtype.Text
-	LastName           string
-	PhoneNumber        string
-	Dob                string
 	CompanyName        string
 	CompanyEmail       string
-	BackupEmail        string
+	BackupEmail        pgtype.Text
 	Registered         pgtype.Bool
 	RegistrationNumber pgtype.Text
 	Address            pgtype.Text
-	Pincode            pgtype.Int4
+	Pincode            pgtype.Text
 	EventCount         pgtype.Int4
 	HostedStatus       EnumHostedStatus
 	AccountStatus      EnumAccountStatus
-	CreatedAt          interface{}
-	UpdatedAt          interface{}
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 type HostOnboarding struct {
 	ID                 int32
 	Username           string
-	FirstName          string
-	MiddleName         pgtype.Text
-	LastName           string
-	PhoneNumber        string
-	Dob                string
 	CompanyName        string
 	CompanyEmail       string
 	BackupEmail        pgtype.Text
@@ -418,6 +407,18 @@ type PriceTier struct {
 	BookingStatus    NullEnumBookingStatus
 }
 
+type Staff struct {
+	ID         string
+	Username   string
+	EventID    uuid.UUID
+	Name       string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	ShiftStart time.Time
+	ShiftEnd   time.Time
+	Removed    pgtype.Bool
+}
+
 type Ticket struct {
 	ID          uuid.UUID
 	EventID     uuid.UUID
@@ -427,6 +428,7 @@ type Ticket struct {
 	MiddleName  pgtype.Text
 	LastName    string
 	PhoneNumber string
+	SeatsBooked int32
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Cancelled   pgtype.Bool
@@ -442,8 +444,10 @@ type UserAccount struct {
 	FirstName     pgtype.Text
 	MiddleName    pgtype.Text
 	LastName      pgtype.Text
+	Dob           string
 	Gender        NullEnumGenderOptions
 	Email         string
+	PhoneNumber   pgtype.Text
 	Avatar        pgtype.Text
 	City          pgtype.Text
 	Status        EnumAccountStatus
@@ -470,16 +474,4 @@ type VerificationAction struct {
 	Purpose  string
 	Otp      string
 	ExpiryAt time.Time
-}
-
-type Volunteer struct {
-	ID         string
-	Username   string
-	EventID    uuid.UUID
-	Name       string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	ShiftStart time.Time
-	ShiftEnd   time.Time
-	Removed    pgtype.Bool
 }

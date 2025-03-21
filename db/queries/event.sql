@@ -20,8 +20,7 @@ RETURNING
     venue,
     tags,
     age_limit,
-    start_time
-;
+    start_time;
 
 -- name: EditEventQuery :exec
 -- Edit an existing Event based on the EventId
@@ -31,7 +30,8 @@ RETURNING
 -- Publish Event based on EventId and hostId
 UPDATE event
 SET
-    visibility = 'published'
+    visibility = 'published',
+    updated_at = NOW()
 WHERE
     id = $1 AND
     host_id = $2;
@@ -66,20 +66,20 @@ OFFSET $1;
 -- name: FetchEventByIdQuery :one
 -- Fetch all Event details by EventId
 SELECT
-    e.title,
-    e.type,
-    e.description,
-    e.thumbnail_url,
-    e.tags,
-    e.venue,
-    e.start_time,
-    e.end_time,
-    e.age_limit,
+    e.title as event_name,
+    e.type as event_type,
+    e.description AS description,
+    e.thumbnail_url AS event_poster_url,
+    e.tags AS tags,
+    e.venue AS venue,
+    e.start_time AS start_time,
+    e.end_time AS end_time,
+    e.age_limit AS age_limit,
     array_agg(json_build_object(
         'first_name', u.first_name,
         'last_name', u.last_name,
         'avatar', u.avatar,
-        'username', ea.username
+        'username', u.username
     )) AS artists,
     array_agg(json_build_object(
         'id', pt.id,
@@ -112,14 +112,14 @@ FROM event AS e
 INNER JOIN host as h ON
     h.id = e.host_id
 WHERE
-    h.username = $1
-;
+    h.username = $1;
 
 -- name: DeleteEventPosterQuery :one
 -- Delete an Event poster based on eventId
 UPDATE event
 SET
-    cover_picture_url = null
+    cover_picture_url = null,
+    updated_at = NOW()
 WHERE
     visibility = 'draft' AND
     id = $1 AND

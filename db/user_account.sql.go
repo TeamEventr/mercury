@@ -8,14 +8,62 @@ package db
 import (
 	"context"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const checkUserBanned = `-- name: CheckUserBanned :one
+const addNewCustomerOtpQuery = `-- name: AddNewCustomerOtpQuery :one
+INSERT INTO
+  user_onboarding (
+    username,
+    password,
+    email,
+    otp,
+    expiry_at
+  )
+VALUES
+  ($1, $2, $3, $4, NOW() + INTERVAL '5 minutes')
+RETURNING
+  username,
+  email,
+  otp,
+  expiry_at
+`
+
+type AddNewCustomerOtpQueryParams struct {
+	Username string
+	Password string
+	Email    string
+	Otp      string
+}
+
+type AddNewCustomerOtpQueryRow struct {
+	Username string
+	Email    string
+	Otp      string
+	ExpiryAt time.Time
+}
+
+// Insert a onboarding record with an otp and an expiry time.
+func (q *Queries) AddNewCustomerOtpQuery(ctx context.Context, db DBTX, arg AddNewCustomerOtpQueryParams) (AddNewCustomerOtpQueryRow, error) {
+	row := db.QueryRow(ctx, addNewCustomerOtpQuery,
+		arg.Username,
+		arg.Password,
+		arg.Email,
+		arg.Otp,
+	)
+	var i AddNewCustomerOtpQueryRow
+	err := row.Scan(
+		&i.Username,
+		&i.Email,
+		&i.Otp,
+		&i.ExpiryAt,
+	)
+	return i, err
+}
+
+const checkUserBannedQuery = `-- name: CheckUserBannedQuery :one
 SELECT EXISTS (
-  SELECT 1 
-  FROM 
+  SELECT 1
+  FROM
     user_account
   WHERE
     username = $1
@@ -24,16 +72,16 @@ SELECT EXISTS (
 `
 
 // Check whether a user_account is banned or not.
-func (q *Queries) CheckUserBanned(ctx context.Context, db DBTX, username string) (bool, error) {
-	row := db.QueryRow(ctx, checkUserBanned, username)
+func (q *Queries) CheckUserBannedQuery(ctx context.Context, db DBTX, username string) (bool, error) {
+	row := db.QueryRow(ctx, checkUserBannedQuery, username)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
 }
 
-const checkUserDisabled = `-- name: CheckUserDisabled :one
+const checkUserDisabledQuery = `-- name: CheckUserDisabledQuery :one
 SELECT EXISTS (
-  SELECT 1 
+  SELECT 1
   FROM
     user_account
   WHERE
@@ -43,408 +91,94 @@ SELECT EXISTS (
 `
 
 // Check whether a user_account is disabled or not.
-func (q *Queries) CheckUserDisabled(ctx context.Context, db DBTX, username string) (bool, error) {
-	row := db.QueryRow(ctx, checkUserDisabled, username)
+func (q *Queries) CheckUserDisabledQuery(ctx context.Context, db DBTX, username string) (bool, error) {
+	row := db.QueryRow(ctx, checkUserDisabledQuery, username)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
 }
 
-const checkUserExist = `-- name: CheckUserExist :one
+const checkUserExistQuery = `-- name: CheckUserExistQuery :one
 SELECT EXISTS (
   SELECT 1
-  FROM 
+  FROM
     user_account
-  WHERE 
+  WHERE
     username = $1
 )
 `
 
 // Check whether a user_account exists or not.
-func (q *Queries) CheckUserExist(ctx context.Context, db DBTX, username string) (bool, error) {
-	row := db.QueryRow(ctx, checkUserExist, username)
+func (q *Queries) CheckUserExistQuery(ctx context.Context, db DBTX, username string) (bool, error) {
+	row := db.QueryRow(ctx, checkUserExistQuery, username)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
 }
 
-const createUserAccount = `-- name: CreateUserAccount :one
+const invalidateOtpQuery = `-- name: InvalidateOtpQuery :one
+UPDATE user_onboarding
+SET
+    expiry_at = NOW()
+WHERE
+    username = $1
+    AND expiry_at > NOW()
+RETURNING
+    username
+`
+
+func (q *Queries) InvalidateOtpQuery(ctx context.Context, db DBTX, username string) (string, error) {
+	row := db.QueryRow(ctx, invalidateOtpQuery, username)
+	err := row.Scan(&username)
+	return username, err
+}
+
+const verifyOTPAndCreateAccountQuery = `-- name: VerifyOTPAndCreateAccountQuery :one
+WITH verified_user AS (
+    SELECT
+        username,
+        password,
+        email
+    FROM user_onboarding
+    WHERE
+        user_onboarding.email = $1
+        AND otp = $2
+        AND expiry_at >= NOW()
+    )
 INSERT INTO
-  user_account (
-    username, 
-    password_login, 
-    password, 
-    email, 
-    loggedin_at, 
-    refresh_token
-  )
-VALUES
-  ($1, true, $2, $3, $4, $5)
-RETURNING 
-  username, 
-  first_name, 
-  middle_name,
-  last_name,
-  gender,
-  email, 
-  avatar,
-  city,
-  refresh_token
-`
-
-type CreateUserAccountParams struct {
-	Username     string
-	Password     pgtype.Text
-	Email        string
-	LoggedinAt   interface{}
-	RefreshToken pgtype.Text
-}
-
-type CreateUserAccountRow struct {
-	Username     string
-	FirstName    pgtype.Text
-	MiddleName   pgtype.Text
-	LastName     pgtype.Text
-	Gender       NullEnumGenderOptions
-	Email        string
-	Avatar       pgtype.Text
-	City         pgtype.Text
-	RefreshToken pgtype.Text
-}
-
-// User account is to be created only after OTP verification is successful
-func (q *Queries) CreateUserAccount(ctx context.Context, db DBTX, arg CreateUserAccountParams) (CreateUserAccountRow, error) {
-	row := db.QueryRow(ctx, createUserAccount,
-		arg.Username,
-		arg.Password,
-		arg.Email,
-		arg.LoggedinAt,
-		arg.RefreshToken,
-	)
-	var i CreateUserAccountRow
-	err := row.Scan(
-		&i.Username,
-		&i.FirstName,
-		&i.MiddleName,
-		&i.LastName,
-		&i.Gender,
-		&i.Email,
-		&i.Avatar,
-		&i.City,
-		&i.RefreshToken,
-	)
-	return i, err
-}
-
-const deleteUserAvatar = `-- name: DeleteUserAvatar :one
-UPDATE
-  user_account
-SET
-  avatar = null
+    user_account(
+        username,
+        password_login,
+        password,
+        email,
+        status,
+        created_at,
+        updated_at
+    )
+SELECT (
+    vu.username,
+    true,
+    vu.password,
+    vu.email,
+    'active',
+    NOW(),
+    NOW()
+) FROM verified_user AS vu
 WHERE
-  username = $1
-  AND status = 'active'
+    vu.username IS NOT NULL
 RETURNING
-  avatar
+    username
 `
 
-// Remove the avatar from s3 and db (db shouldn't fail)
-func (q *Queries) DeleteUserAvatar(ctx context.Context, db DBTX, username string) (pgtype.Text, error) {
-	row := db.QueryRow(ctx, deleteUserAvatar, username)
-	var avatar pgtype.Text
-	err := row.Scan(&avatar)
-	return avatar, err
+type VerifyOTPAndCreateAccountQueryParams struct {
+	Email string
+	Otp   string
 }
 
-const disableUserAccount = `-- name: DisableUserAccount :exec
-UPDATE
-  user_account
-SET
-  status = 'disabled'
-WHERE
-  username = $1
-  AND status = 'active'
-`
-
-// FIX: Disable a user account post OTP confirmation
-func (q *Queries) DisableUserAccount(ctx context.Context, db DBTX, username string) error {
-	_, err := db.Exec(ctx, disableUserAccount, username)
-	return err
-}
-
-const editUserAccount = `-- name: EditUserAccount :one
-UPDATE 
-  user_account
-SET
-  first_name = $2,
-  middle_name = $3,
-  last_name = $4,
-  gender = $5,
-  city = $5
-WHERE
-  username = $1
-  AND status = 'active'
-RETURNING
-  username,
-  first_name,
-  middle_name,
-  last_name,
-  gender,
-  city
-`
-
-type EditUserAccountParams struct {
-	Username   string
-	FirstName  pgtype.Text
-	MiddleName pgtype.Text
-	LastName   pgtype.Text
-	Gender     NullEnumGenderOptions
-}
-
-type EditUserAccountRow struct {
-	Username   string
-	FirstName  pgtype.Text
-	MiddleName pgtype.Text
-	LastName   pgtype.Text
-	Gender     NullEnumGenderOptions
-	City       pgtype.Text
-}
-
-// Any field can change (not email, password)
-func (q *Queries) EditUserAccount(ctx context.Context, db DBTX, arg EditUserAccountParams) (EditUserAccountRow, error) {
-	row := db.QueryRow(ctx, editUserAccount,
-		arg.Username,
-		arg.FirstName,
-		arg.MiddleName,
-		arg.LastName,
-		arg.Gender,
-	)
-	var i EditUserAccountRow
-	err := row.Scan(
-		&i.Username,
-		&i.FirstName,
-		&i.MiddleName,
-		&i.LastName,
-		&i.Gender,
-		&i.City,
-	)
-	return i, err
-}
-
-const editUserAvatar = `-- name: EditUserAvatar :one
-UPDATE
-  user_account
-SET
-  avatar = $2
-WHERE
-  username = $1
-  AND status = 'active'
-RETURNING
-  avatar
-`
-
-type EditUserAvatarParams struct {
-	Username string
-	Avatar   pgtype.Text
-}
-
-// Alter the uploaded avatar image in s3 and update db (s3 shouldn't fail)
-func (q *Queries) EditUserAvatar(ctx context.Context, db DBTX, arg EditUserAvatarParams) (pgtype.Text, error) {
-	row := db.QueryRow(ctx, editUserAvatar, arg.Username, arg.Avatar)
-	var avatar pgtype.Text
-	err := row.Scan(&avatar)
-	return avatar, err
-}
-
-const editUserPassword = `-- name: EditUserPassword :exec
-UPDATE
-  user_account
-SET
-  password = $2
-WHERE
-  username = $1
-  AND status = 'active'
-`
-
-type EditUserPasswordParams struct {
-	Username string
-	Password pgtype.Text
-}
-
-// FIX: Edit the user password post OTP confirmation
-func (q *Queries) EditUserPassword(ctx context.Context, db DBTX, arg EditUserPasswordParams) error {
-	_, err := db.Exec(ctx, editUserPassword, arg.Username, arg.Password)
-	return err
-}
-
-const enableUserAccount = `-- name: EnableUserAccount :exec
-UPDATE
-  user_account
-SET
-  status = 'active'
-WHERE
-  username = $1
-  AND status = 'disabled'
-`
-
-// FIX: Enable a user account post OTP confirmation
-func (q *Queries) EnableUserAccount(ctx context.Context, db DBTX, username string) error {
-	_, err := db.Exec(ctx, enableUserAccount, username)
-	return err
-}
-
-const getUserOnboardingOTP = `-- name: GetUserOnboardingOTP :one
-SELECT id, username, password, email, otp, created_at, expiry_at
-FROM
-  user_onboarding
-WHERE
-  username = $1
-  AND expiry_at >= NOW() - INTERVAL '5 minutes'
-`
-
-func (q *Queries) GetUserOnboardingOTP(ctx context.Context, db DBTX, username string) (UserOnboarding, error) {
-	row := db.QueryRow(ctx, getUserOnboardingOTP, username)
-	var i UserOnboarding
-	err := row.Scan(
-		&i.ID,
-		&i.Username,
-		&i.Password,
-		&i.Email,
-		&i.Otp,
-		&i.CreatedAt,
-		&i.ExpiryAt,
-	)
-	return i, err
-}
-
-const loginUser = `-- name: LoginUser :one
-SELECT 
-  username,
-  first_name,
-  last_name,
-  gender,
-  email,
-  avatar,
-  city
-FROM 
-  user_account
-WHERE
-  username = $1
-  AND password_login = true
-  AND password = $2
-  AND status = 'active'
-`
-
-type LoginUserParams struct {
-	Username string
-	Password pgtype.Text
-}
-
-type LoginUserRow struct {
-	Username  string
-	FirstName pgtype.Text
-	LastName  pgtype.Text
-	Gender    NullEnumGenderOptions
-	Email     string
-	Avatar    pgtype.Text
-	City      pgtype.Text
-}
-
-// Check login credentials post hashing the password against an active account.
-func (q *Queries) LoginUser(ctx context.Context, db DBTX, arg LoginUserParams) (LoginUserRow, error) {
-	row := db.QueryRow(ctx, loginUser, arg.Username, arg.Password)
-	var i LoginUserRow
-	err := row.Scan(
-		&i.Username,
-		&i.FirstName,
-		&i.LastName,
-		&i.Gender,
-		&i.Email,
-		&i.Avatar,
-		&i.City,
-	)
-	return i, err
-}
-
-const onboardUser = `-- name: OnboardUser :one
-INSERT INTO 
-  user_onboarding (
-    username, 
-    password, 
-    email, 
-    otp, 
-    expiry_at
-  )
-VALUES
-  ($1, $2, $3, $4, $5)
-RETURNING 
-  username, 
-  email, 
-  otp, 
-  expiry_at
-`
-
-type OnboardUserParams struct {
-	Username string
-	Password string
-	Email    string
-	Otp      string
-	ExpiryAt time.Time
-}
-
-type OnboardUserRow struct {
-	Username string
-	Email    string
-	Otp      string
-	ExpiryAt time.Time
-}
-
-// Insert a onboarding record with an otp and an expiry time.
-func (q *Queries) OnboardUser(ctx context.Context, db DBTX, arg OnboardUserParams) (OnboardUserRow, error) {
-	row := db.QueryRow(ctx, onboardUser,
-		arg.Username,
-		arg.Password,
-		arg.Email,
-		arg.Otp,
-		arg.ExpiryAt,
-	)
-	var i OnboardUserRow
-	err := row.Scan(
-		&i.Username,
-		&i.Email,
-		&i.Otp,
-		&i.ExpiryAt,
-	)
-	return i, err
-}
-
-const verifyUserOTP = `-- name: VerifyUserOTP :one
-SELECT
-  username,
-  password,
-  email
-FROM
-  user_onboarding
-WHERE
-  username = $1
-  AND otp = $2
-  AND expiry_at >= NOW() - INTERVAL '5 minutes'
-`
-
-type VerifyUserOTPParams struct {
-	Username string
-	Otp      string
-}
-
-type VerifyUserOTPRow struct {
-	Username string
-	Password string
-	Email    string
-}
-
-func (q *Queries) VerifyUserOTP(ctx context.Context, db DBTX, arg VerifyUserOTPParams) (VerifyUserOTPRow, error) {
-	row := db.QueryRow(ctx, verifyUserOTP, arg.Username, arg.Otp)
-	var i VerifyUserOTPRow
-	err := row.Scan(&i.Username, &i.Password, &i.Email)
-	return i, err
+// OTP verification and account creation in a single query
+func (q *Queries) VerifyOTPAndCreateAccountQuery(ctx context.Context, db DBTX, arg VerifyOTPAndCreateAccountQueryParams) (string, error) {
+	row := db.QueryRow(ctx, verifyOTPAndCreateAccountQuery, arg.Email, arg.Otp)
+	var username string
+	err := row.Scan(&username)
+	return username, err
 }

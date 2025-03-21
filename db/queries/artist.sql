@@ -4,7 +4,7 @@ SELECT
 FROM
     user_account
 WHERE
-    username = ANY ($1::varchar[]);
+    username = ANY ($1::TEXT[]);
 
 -- name: AddArtistsQuery :copyfrom
 INSERT INTO
