@@ -139,9 +139,7 @@ CREATE TABLE event (
   type enum_event_type NOT NULL DEFAULT 'music',
   host_id UUID NOT NULL,
   description TEXT NULL,
-  cover_picture_url TEXT NULL,
-  banner_url TEXT NULL,
-  thumbnail_url TEXT NULL,
+  cover_picture_url TEXT NULL, banner_url TEXT NULL, thumbnail_url TEXT NULL,
   visibility enum_event_visibility NOT NULL DEFAULT 'draft',
   tags TEXT[],
   venue TEXT NULL,
@@ -151,7 +149,6 @@ CREATE TABLE event (
   age_limit INTEGER DEFAULT 18,
   created_at TIMESTAMPZ DEFAULT NOW(),
   updated_at TIMESTAMPZ DEFAULT NOW(),
-  deleted_at TIMESTAMPZ,
 
   CONSTRAINT "event_pkey" PRIMARY KEY (id),
   CONSTRAINT "event_host_id_fkey"
@@ -230,7 +227,7 @@ CREATE TABLE ticket (
 );
 
 -- +goose Up
-CREATE TABLE volunteer (
+CREATE TABLE staff (
   id TEXT NOT NULL,
   username TEXT NOT NULL,
   event_id UUID NOT NULL,
@@ -241,13 +238,13 @@ CREATE TABLE volunteer (
   shift_end TIMESTAMPZ NOT NULL,
   removed BOOLEAN DEFAULT false,
 
-  CONSTRAINT "volunteer_pkey" PRIMARY KEY (id),
-  CONSTRAINT "volunteer_username_fkey"
+  CONSTRAINT "staff_pkey" PRIMARY KEY (id),
+  CONSTRAINT "staff_username_fkey"
     FOREIGN KEY (username)
       REFERENCES user_account(username)
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
-  CONSTRAINT "volunteer_event_id_fkey"
+  CONSTRAINT "staff_event_id_fkey"
     FOREIGN KEY (event_id)
       REFERENCES event(event_id)
         ON DELETE RESTRICT
