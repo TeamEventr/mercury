@@ -37,16 +37,16 @@ func (rzp *RzpConfig) ObtainKey() string {
 func (rzp *RzpConfig) ExecutePayment(amount int, eventId, name, contact,
 	email, desc, txnId string) (string, error) {
 
-	options := map[string]interface{}{
+	options := map[string]any{
 		"amount":          amount * 100,
 		"currency":        "INR",
 		"receipt":         txnId,
 		"payment_capture": true, // automatically capture payment
 		"partial_payment": false,
-		"notes": map[string]interface{}{
+		"notes": map[string]string{
 			"event_id": eventId,
 		},
-		"customer": map[string]interface{}{
+		"customer": map[string]any{
 			"name":  name,
 			"email": email,
 		},
@@ -70,7 +70,6 @@ func RazorPaymentVerification(sign, orderId, paymentId string) error {
 	h := hmac.New(sha256.New, []byte(secret))
 	_, err := h.Write([]byte(data))
 	if err != nil {
-		// This should never happen
 		panic(err)
 	}
 

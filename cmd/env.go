@@ -6,26 +6,28 @@ import (
 	"strconv"
 	"strings"
 
+	"slices"
+
 	"github.com/joho/godotenv"
 )
 
 var EnvVars *EnvConfig
 
 type EnvConfig struct {
-	Environment        string
-	Port               int
-	DBUrl              string
-	RzpKey             string
-	RzpSecret          string
-	OAuthClient        string
-	OAuthSecret        string
-	OAuthCallback      string
-	CacheAddr          string
-	CachePwd           string
-	AwsRegionName      string
-	AwsBucketName      string
-	AwsBucketAccessKey string
-	AwsBucketSecretKey string
+	Environment       string
+	Port              int
+	DBUrl             string
+	RzpKey            string
+	RzpSecret         string
+	OAuthClient       string
+	OAuthSecret       string
+	OAuthCallback     string
+	CfApiKey          string // Needed for REST API for KV (cache)
+	CfApiEmail        string
+	CfBucketName      string // Needed for R2 Bucket
+	CfAccountId       string
+	CfBucketAccessKey string
+	CfBucketSecretKey string
 }
 
 func NewEnvConfig() (*EnvConfig, error) {
@@ -45,21 +47,15 @@ func NewEnvConfig() (*EnvConfig, error) {
 	oauthClientId := os.Getenv("OAUTH_CLIENT_ID")
 	oauthClientSecret := os.Getenv("OAUTH_CLIENT_SECRET")
 	oauthCallback := os.Getenv("OAUTH_CALLBACK_URL")
-	cacheAddr := os.Getenv("REDIS_URL")
-	cachePwd := os.Getenv("REDIS_PASSWORD")
-	awsRegionName := os.Getenv("AWS_REGION")
-	awsBucketName := os.Getenv("AWS_S3_BUCKET_NAME")
-	awsBucketAccessKey := os.Getenv("AWS_S3_BUCKET_ACCESS_KEY")
-	awsBucketSecretKey := os.Getenv("AWS_S3_BUCKET_SECRET_KEY")
+	cfApiKey := os.Getenv("CF_API_KEY")
+	cfApiEmail := os.Getenv("CF_API_EMAIL")
+	cfAccountId := os.Getenv("CF_ACCOUNT_ID")
+	cfBucketName := os.Getenv("CF_R2_BUCKET_NAME")
+	cfBucketAccessKey := os.Getenv("CF_R2_BUCKET_ACCESS_KEY")
+	cfBucketSecretKey := os.Getenv("CF_R2_BUCKET_SECRET_KEY")
 
 	environment = strings.ToLower(environment)
-	isValid := false
-	for _, validEnv := range validEnvs {
-		if environment == validEnv {
-			isValid = true
-			break
-		}
-	}
+	isValid := slices.Contains(validEnvs, environment)
 	if !isValid {
 		return nil, fmt.Errorf("Invalid ENVIRONMENT value: %s", environment)
 	}
@@ -96,30 +92,30 @@ func NewEnvConfig() (*EnvConfig, error) {
 		return nil, fmt.Errorf("OAUTH_CALLBACK_URL environment variable is missing.")
 	}
 	cfg.OAuthCallback = oauthCallback
-	if cacheAddr == "" {
-		return nil, fmt.Errorf("REDIS_URL environment variable is missing.")
+	if cfApiKey == "" {
+		return nil, fmt.Errorf("CF_API_KEY variable is missing.")
 	}
-	cfg.CacheAddr = cacheAddr
-	if cachePwd == "" {
-		return nil, fmt.Errorf("REDIS_PASSWORD environment variable is missing.")
+	cfg.CfApiKey = cfApiKey
+	if cfApiEmail == "" {
+		return nil, fmt.Errorf("CF_API_EMAIL environment variable is missing.")
 	}
-	cfg.CachePwd = cachePwd
-	if awsRegionName == "" {
-		return nil, fmt.Errorf("AWS_REGION environment variable is missing.")
+	cfg.CfApiEmail = cfApiEmail
+	if cfAccountId == "" {
+		return nil, fmt.Errorf("CF_ACCOUNT_ID environment variable is missing.")
 	}
-	cfg.AwsRegionName = awsRegionName
-	if awsBucketName == "" {
-		return nil, fmt.Errorf("AWS_S3_BUCKET_NAME environment variable is missing.")
+	cfg.CfAccountId = cfAccountId
+	if cfBucketName == "" {
+		return nil, fmt.Errorf("CF_R2_BUCKET_NAME environment variable is missing.")
 	}
-	cfg.AwsBucketName = awsBucketName
-	if awsBucketAccessKey == "" {
-		return nil, fmt.Errorf("AWS_S3_BUCKET_ACCESS_KEY environment variable is missing.")
+	cfg.CfBucketName = cfBucketName
+	if cfBucketAccessKey == "" {
+		return nil, fmt.Errorf("CF_R2_BUCKET_ACCESS_KEY environment variable is missing.")
 	}
-	cfg.AwsBucketAccessKey = awsBucketAccessKey
-	if awsBucketSecretKey == "" {
-		return nil, fmt.Errorf("AWS_S3_BUCKET_SECRET_KEY environment variable is missing.")
+	cfg.CfBucketAccessKey = cfBucketAccessKey
+	if cfBucketSecretKey == "" {
+		return nil, fmt.Errorf("CF_R2_BUCKET_SECRET_KEY environment variable is missing.")
 	}
-	cfg.AwsBucketSecretKey = awsBucketSecretKey
+	cfg.CfBucketSecretKey = cfBucketSecretKey
 
 	return cfg, nil
 }
